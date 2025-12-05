@@ -12,7 +12,7 @@ from .crud import (
 # Ensure tables exist (dev convenience)
 Base.metadata.create_all(bind=engine)
 
-# ---------- helpers ----------
+#helpers 
 def get_db():
     db = SessionLocal()
     try:
@@ -23,13 +23,13 @@ def get_db():
 def confirm_prompt(msg):
     return click.confirm(msg, default=False)
 
-# ---------- CLI ----------
+#CLI 
 @click.group()
 def cli():
     """Donor Management CLI Application"""
     pass
 
-# ---------------- DONOR ----------------
+#DONOR 
 @cli.group()
 def donor():
     """Manage donors"""
@@ -42,9 +42,9 @@ def donor_add(name, email):
     db = next(get_db())
     try:
         obj = create_donor(db, name=name, email=email)
-        click.echo(f"✅ Donor created: {obj.id} - {obj.name} <{obj.email}>")
+        click.echo(f" Donor created: {obj.id} - {obj.name} <{obj.email}>")
     except Exception as e:
-        click.echo(f"❌ Error: {e}")
+        click.echo(f" Error: {e}")
 
 @donor.command("list")
 def donor_list():
@@ -53,7 +53,7 @@ def donor_list():
     if not rows:
         click.echo("No donors.")
         return
-    click.echo("📌 Donors:")
+    click.echo("Donors:")
     for d in rows:
         click.echo(f" - {d.id}: {d.name} <{d.email}>")
 
@@ -109,7 +109,7 @@ def donor_delete(donor_id):
     ok = delete_donor_by_id(db, donor_id)
     click.echo("Deleted." if ok else "Delete failed.")
 
-# ---------------- CAMPAIGN ----------------
+# CAMPAIGN 
 @cli.group()
 def campaign():
     """Manage campaigns"""
@@ -122,9 +122,9 @@ def campaign_add(title, description):
     db = next(get_db())
     try:
         c = create_campaign(db, title=title, description=description)
-        click.echo(f"✅ Campaign created: {c.id} - {c.title}")
+        click.echo(f" Campaign created: {c.id} - {c.title}")
     except Exception as e:
-        click.echo(f"❌ Error: {e}")
+        click.echo(f" Error: {e}")
 
 @campaign.command("list")
 def campaign_list():
@@ -133,7 +133,7 @@ def campaign_list():
     if not rows:
         click.echo("No campaigns.")
         return
-    click.echo("📌 Campaigns:")
+    click.echo(" Campaigns:")
     for c in rows:
         click.echo(f" - {c.id}: {c.title} — {c.description or '(no description)'}")
 
@@ -163,7 +163,7 @@ def campaign_delete(campaign_id):
     ok = delete_campaign_by_id(db, campaign_id)
     click.echo("Deleted." if ok else "Delete failed.")
 
-# ---------------- DONATION ----------------
+# DONATION 
 @cli.group()
 def donation():
     """Manage donations"""
@@ -177,9 +177,9 @@ def donation_add(amount, donor_id, campaign_id):
     db = next(get_db())
     try:
         dn = create_donation(db, amount=amount, donor_id=donor_id, campaign_id=campaign_id)
-        click.echo(f"✅ Donation created: {dn.id} amount={dn.amount} donor={dn.donor_id} campaign={dn.campaign_id}")
+        click.echo(f"Donation created: {dn.id} amount={dn.amount} donor={dn.donor_id} campaign={dn.campaign_id}")
     except Exception as e:
-        click.echo(f"❌ Error: {e}")
+        click.echo(f"Error: {e}")
 
 @donation.command("list")
 def donation_list():
@@ -213,7 +213,7 @@ def donation_by_campaign(campaign_id):
     for dn in rows:
         click.echo(f"{dn.id}: {dn.amount} at {dn.timestamp} (donor={dn.donor_id})")
 
-# ---------------- REPORTS ----------------
+#REPORTS 
 @cli.group()
 def report():
     """Reports"""

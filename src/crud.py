@@ -2,10 +2,9 @@
 from sqlalchemy import func
 from .models import Donor, Donation, Campaign
 
-# Note: functions expect an active SQLAlchemy session object (db),
-# which your CLI creates with SessionLocal() and passes in.
+# functions expect an active SQLAlchemy session object (db)
 
-# ---------- Donor ----------
+# Donor
 def create_donor(db, name, email):
     return Donor.create(db, name=name, email=email)
 
@@ -28,7 +27,7 @@ def delete_donor_by_id(db, donor_id):
     donor.delete(db)
     return True
 
-# ---------- Campaign ----------
+#Campaign
 def create_campaign(db, title, description=None):
     return Campaign.create(db, title=title, description=description)
 
@@ -48,7 +47,7 @@ def delete_campaign_by_id(db, campaign_id):
     campaign.delete(db)
     return True
 
-# ---------- Donation ----------
+#Donation
 def create_donation(db, amount, donor_id, campaign_id=None):
     # Validate donor exists
     donor = Donor.find_by_id(db, donor_id)
@@ -73,7 +72,7 @@ def donations_for_donor(db, donor_id):
 def donations_for_campaign(db, campaign_id):
     return db.query(Donation).filter(Donation.campaign_id == campaign_id).order_by(Donation.timestamp.desc()).all()
 
-# ---------- Reports ----------
+#  Reports 
 def total_donations(db):
     total = db.query(func.coalesce(func.sum(Donation.amount), 0)).scalar()
     return float(total) if total is not None else 0.0

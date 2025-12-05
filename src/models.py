@@ -17,7 +17,7 @@ class Donor(Base):
     def __repr__(self):
         return f"<Donor id={self.id} name='{self.name}'>"
 
-    # ---------- validations ----------
+    # validations 
     @validates("name")
     def _validate_name(self, key, value):
         if not value or not value.strip():
@@ -30,7 +30,7 @@ class Donor(Base):
             raise ValueError("Provide a valid email address")
         return value.strip().lower()
 
-    # ---------- ORM helpers ----------
+    # ORM helpers 
     @classmethod
     def create(cls, session, **kwargs):
         obj = cls(**kwargs)
