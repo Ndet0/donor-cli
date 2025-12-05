@@ -1,21 +1,18 @@
+# src/cli.py
 import click
 from .db import SessionLocal, Base, engine
+from .models import Donor, Campaign, Donation
 from .crud import (
-    create_donor, get_all_donors, find_donor_by_id, delete_donor,
-    create_campaign, get_all_campaigns, find_campaign_by_id, delete_campaign,
-    create_donation, get_donations_by_donor, get_donations_by_campaign
+    create_donor, list_donors, find_donor_by_id, find_donor_by_name, find_donor_by_email, delete_donor_by_id,
+    create_campaign, list_campaigns, find_campaign_by_id, find_campaign_by_title, delete_campaign_by_id,
+    create_donation, list_donations, donations_for_donor, donations_for_campaign,
+    total_donations, donations_by_donor, donations_by_campaign
 )
 
-
-# ---------------------------------------------------------
-# Initialize database tables
-# ---------------------------------------------------------
+# Ensure tables exist (dev convenience)
 Base.metadata.create_all(bind=engine)
 
-
-# ---------------------------------------------------------
-# Helper: get a database session
-# ---------------------------------------------------------
+# ---------- helpers ----------
 def get_db():
     db = SessionLocal()
     try:
@@ -23,167 +20,232 @@ def get_db():
     finally:
         db.close()
 
+def confirm_prompt(msg):
+    return click.confirm(msg, default=False)
 
-# ---------------------------------------------------------
-# CLI Application Root
-# ---------------------------------------------------------
+# ---------- CLI ----------
 @click.group()
 def cli():
     """Donor Management CLI Application"""
     pass
 
-
-# ---------------------------------------------------------
-# DONOR COMMANDS
-# ---------------------------------------------------------
+# ---------------- DONOR ----------------
 @cli.group()
 def donor():
     """Manage donors"""
     pass
 
+@donor.command("add")
+@click.option("--name", prompt=True)
+@click.option("--email", prompt=True)
+def donor_add(name, email):
+    db = next(get_db())
+    try:
+        obj = create_donor(db, name=name, email=email)
+        click.echo(f"✅ Donor created: {obj.id} - {obj.name} <{obj.email}>")
+    except Exception as e:
+        click.echo(f"❌ Error: {e}")
 
-@donor.command()
+@donor.command("list")
+def donor_list():
+    db = next(get_db())
+    rows = list_donors(db)
+    if not rows:
+        click.echo("No donors.")
+        return
+    click.echo("📌 Donors:")
+    for d in rows:
+        click.echo(f" - {d.id}: {d.name} <{d.email}>")
+
+@donor.command("view")
+@click.argument("donor_id", type=int)
+def donor_view(donor_id):
+    db = next(get_db())
+    d = find_donor_by_id(db, donor_id)
+    if not d:
+        click.echo("Donor not found")
+        return
+    click.echo(f"ID: {d.id}\nName: {d.name}\nEmail: {d.email}\nDonations:")
+    if not d.donations:
+        click.echo("  None")
+    else:
+        for dn in d.donations:
+            click.echo(f"  - {dn.id}: {dn.amount} at {dn.timestamp} (campaign={dn.campaign_id})")
+
+@donor.command("find-by-name")
 @click.argument("name")
+def donor_find_by_name(name):
+    db = next(get_db())
+    rows = find_donor_by_name(db, name)
+    if not rows:
+        click.echo("No donors found with that name.")
+        return
+    for d in rows:
+        click.echo(f"{d.id}: {d.name} <{d.email}>")
+
+@donor.command("find-by-email")
 @click.argument("email")
-def add(name, email):
-    """Add a new donor"""
+def donor_find_by_email(email):
     db = next(get_db())
-    donor = create_donor(db, name, email)
-    click.echo(f"Donor created: {donor}")
-
-
-@donor.command()
-def list():
-    """List all donors"""
-    db = next(get_db())
-    donors = get_all_donors(db)
-    if not donors:
-        click.echo("No donors found.")
+    rows = find_donor_by_email(db, email)
+    if not rows:
+        click.echo("No donors found with that email.")
         return
-    for d in donors:
-        click.echo(f"{d.id}: {d.name} ({d.email})")
+    for d in rows:
+        click.echo(f"{d.id}: {d.name} <{d.email}>")
 
-
-@donor.command()
+@donor.command("delete")
 @click.argument("donor_id", type=int)
-def view(donor_id):
-    """View a donor and their donations"""
+def donor_delete(donor_id):
     db = next(get_db())
-    donor = find_donor_by_id(db, donor_id)
-    if not donor:
-        click.echo("Donor not found!")
-        return
-
-    click.echo(f"ID: {donor.id}")
-    click.echo(f"Name: {donor.name}")
-    click.echo(f"Email: {donor.email}")
-    click.echo("Donations:")
-
-    if not donor.donations:
-        click.echo("  No donations yet.")
-    else:
-        for donation in donor.donations:
-            click.echo(f"  - {donation.amount} on {donation.timestamp}")
-
-
-@donor.command()
-@click.argument("donor_id", type=int)
-def delete(donor_id):
-    """Delete a donor"""
-    db = next(get_db())
-    if delete_donor(db, donor_id):
-        click.echo("Donor deleted successfully.")
-    else:
+    d = find_donor_by_id(db, donor_id)
+    if not d:
         click.echo("Donor not found.")
+        return
+    click.echo(f"You are about to delete donor: {d.id} - {d.name} and ALL their donations.")
+    if not confirm_prompt("Are you sure?"):
+        click.echo("Cancelled.")
+        return
+    ok = delete_donor_by_id(db, donor_id)
+    click.echo("Deleted." if ok else "Delete failed.")
 
-
-# ---------------------------------------------------------
-# CAMPAIGN COMMANDS
-# ---------------------------------------------------------
+# ---------------- CAMPAIGN ----------------
 @cli.group()
 def campaign():
     """Manage campaigns"""
     pass
 
+@campaign.command("add")
+@click.option("--title", prompt=True)
+@click.option("--description", prompt=False, default="")
+def campaign_add(title, description):
+    db = next(get_db())
+    try:
+        c = create_campaign(db, title=title, description=description)
+        click.echo(f"✅ Campaign created: {c.id} - {c.title}")
+    except Exception as e:
+        click.echo(f"❌ Error: {e}")
 
-@campaign.command()
+@campaign.command("list")
+def campaign_list():
+    db = next(get_db())
+    rows = list_campaigns(db)
+    if not rows:
+        click.echo("No campaigns.")
+        return
+    click.echo("📌 Campaigns:")
+    for c in rows:
+        click.echo(f" - {c.id}: {c.title} — {c.description or '(no description)'}")
+
+@campaign.command("find")
 @click.argument("title")
-@click.argument("description")
-def add(title, description):
-    """Add a new campaign"""
+def campaign_find(title):
     db = next(get_db())
-    camp = create_campaign(db, title, description)
-    click.echo(f"Campaign created: {camp}")
-
-
-@campaign.command()
-def list():
-    """List all campaigns"""
-    db = next(get_db())
-    campaigns = get_all_campaigns(db)
-    if not campaigns:
+    rows = find_campaign_by_title(db, title)
+    if not rows:
         click.echo("No campaigns found.")
         return
-    for c in campaigns:
-        click.echo(f"{c.id}: {c.title} - {c.description}")
+    for c in rows:
+        click.echo(f"{c.id}: {c.title} — {c.description}")
 
-
-@campaign.command()
+@campaign.command("delete")
 @click.argument("campaign_id", type=int)
-def delete(campaign_id):
-    """Delete a campaign"""
+def campaign_delete(campaign_id):
     db = next(get_db())
-    if delete_campaign(db, campaign_id):
-        click.echo("Campaign deleted successfully.")
-    else:
+    c = find_campaign_by_id(db, campaign_id)
+    if not c:
         click.echo("Campaign not found.")
+        return
+    click.echo(f"You are about to delete campaign: {c.id} - {c.title} and ALL its donations.")
+    if not confirm_prompt("Are you sure?"):
+        click.echo("Cancelled.")
+        return
+    ok = delete_campaign_by_id(db, campaign_id)
+    click.echo("Deleted." if ok else "Delete failed.")
 
-
-# ---------------------------------------------------------
-# DONATION COMMANDS
-# ---------------------------------------------------------
+# ---------------- DONATION ----------------
 @cli.group()
 def donation():
     """Manage donations"""
     pass
 
-
-@donation.command()
-@click.argument("amount", type=float)
-@click.argument("donor_id", type=int)
-@click.argument("campaign_id", type=int)
-def add(amount, donor_id, campaign_id):
-    """Add a donation"""
+@donation.command("add")
+@click.option("--amount", prompt=True, type=float)
+@click.option("--donor-id", prompt=True, type=int)
+@click.option("--campaign-id", default=None, type=int)
+def donation_add(amount, donor_id, campaign_id):
     db = next(get_db())
-    donation = create_donation(db, amount, donor_id, campaign_id)
-    click.echo(f"Donation created: {donation}")
+    try:
+        dn = create_donation(db, amount=amount, donor_id=donor_id, campaign_id=campaign_id)
+        click.echo(f"✅ Donation created: {dn.id} amount={dn.amount} donor={dn.donor_id} campaign={dn.campaign_id}")
+    except Exception as e:
+        click.echo(f"❌ Error: {e}")
 
-
-@donation.command()
-@click.argument("donor_id", type=int)
-def by_donor(donor_id):
-    """List donations for a donor"""
+@donation.command("list")
+def donation_list():
     db = next(get_db())
-    donations = get_donations_by_donor(db, donor_id)
-    if not donations:
-        click.echo("No donations found.")
+    rows = list_donations(db)
+    if not rows:
+        click.echo("No donations.")
         return
-    for d in donations:
-        click.echo(f"{d.amount} -> Campaign {d.campaign_id}")
+    for dn in rows:
+        click.echo(f"{dn.id}: {dn.amount} -> donor {dn.donor_id} campaign {dn.campaign_id} at {dn.timestamp}")
 
-
-@donation.command()
-@click.argument("campaign_id", type=int)
-def by_campaign(campaign_id):
-    """List donations for a campaign"""
+@donation.command("by-donor")
+@click.argument("donor_id", type=int)
+def donation_by_donor(donor_id):
     db = next(get_db())
-    donations = get_donations_by_campaign(db, campaign_id)
-    if not donations:
-        click.echo("No donations found.")
+    rows = donations_for_donor(db, donor_id)
+    if not rows:
+        click.echo("No donations for that donor.")
         return
-    for d in donations:
-        click.echo(f"{d.amount} -> Donor {d.donor_id}")
+    for dn in rows:
+        click.echo(f"{dn.id}: {dn.amount} at {dn.timestamp} (campaign={dn.campaign_id})")
 
+@donation.command("by-campaign")
+@click.argument("campaign_id", type=int)
+def donation_by_campaign(campaign_id):
+    db = next(get_db())
+    rows = donations_for_campaign(db, campaign_id)
+    if not rows:
+        click.echo("No donations for that campaign.")
+        return
+    for dn in rows:
+        click.echo(f"{dn.id}: {dn.amount} at {dn.timestamp} (donor={dn.donor_id})")
+
+# ---------------- REPORTS ----------------
+@cli.group()
+def report():
+    """Reports"""
+    pass
+
+@report.command("total")
+def report_total():
+    db = next(get_db())
+    total = total_donations(db)
+    click.echo(f"Total donations: {total}")
+
+@report.command("by-donor")
+def report_by_donor():
+    db = next(get_db())
+    rows = donations_by_donor(db)
+    if not rows:
+        click.echo("No donations yet.")
+        return
+    click.echo("Donations by donor:")
+    for name, total in rows:
+        click.echo(f" - {name}: {total}")
+
+@report.command("by-campaign")
+def report_by_campaign():
+    db = next(get_db())
+    rows = donations_by_campaign(db)
+    if not rows:
+        click.echo("No donations yet.")
+        return
+    click.echo("Donations by campaign:")
+    for title, total in rows:
+        click.echo(f" - {title}: {total}")
 
 if __name__ == "__main__":
     cli()
