@@ -1,90 +1,129 @@
-# src/crud.py
-from sqlalchemy import func
-from .models import Donor, Donation, Campaign
+from .db import SessionLocal
+from .models import Donor, Campaign, Donation
 
-# functions expect an active SQLAlchemy session object (db)
+# DONOR CRUD
 
-# Donor
-def create_donor(db, name, email):
-    return Donor.create(db, name=name, email=email)
 
-def list_donors(db):
-    return Donor.get_all(db)
+def create_donor(name, email):
+    db = SessionLocal()
+    donor = Donor(name=name, email=email)
+    db.add(donor)
+    db.commit()
+    db.refresh(donor)
+    return donor
 
-def find_donor_by_id(db, donor_id):
-    return Donor.find_by_id(db, donor_id)
 
-def find_donor_by_name(db, name):
-    return Donor.find_by_attr(db, name=name)
+def list_donors():
+    db = SessionLocal()
+    return db.query(Donor).all()
 
-def find_donor_by_email(db, email):
-    return Donor.find_by_attr(db, email=email.lower())
 
-def delete_donor_by_id(db, donor_id):
-    donor = Donor.find_by_id(db, donor_id)
+def update_donor(db, donor_id, name=None, email=None):
+    donor = db.query(Donor).filter(Donor.id == donor_id).first()
     if not donor:
-        return False
-    donor.delete(db)
-    return True
+        return None
 
-#Campaign
-def create_campaign(db, title, description=None):
-    return Campaign.create(db, title=title, description=description)
+    if name:
+        donor.name = name
+    if email:
+        donor.email = email
 
-def list_campaigns(db):
-    return Campaign.get_all(db)
+    db.commit()
+    db.refresh(donor)
+    return donor
 
-def find_campaign_by_id(db, campaign_id):
-    return Campaign.find_by_id(db, campaign_id)
 
-def find_campaign_by_title(db, title):
-    return Campaign.find_by_attr(db, title=title)
+def delete_donor(donor_id):
+    db = SessionLocal()
+    donor = db.query(Donor).filter(Donor.id == donor_id).first()
+    if donor:
+        db.delete(donor)
+        db.commit()
+        return True
+    return False
 
-def delete_campaign_by_id(db, campaign_id):
-    campaign = Campaign.find_by_id(db, campaign_id)
+
+# CAMPAIGN CRUD
+
+
+def create_campaign(title, description=None):
+    db = SessionLocal()
+    campaign = Campaign(title=title, description=description)
+    db.add(campaign)
+    db.commit()
+    db.refresh(campaign)
+    return campaign
+
+
+def list_campaigns():
+    db = SessionLocal()
+    return db.query(Campaign).all()
+
+
+def update_campaign(db, campaign_id, title=None, description=None):
+    campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
     if not campaign:
-        return False
-    campaign.delete(db)
-    return True
+        return None
 
-#Donation
-def create_donation(db, amount, donor_id, campaign_id=None):
-    # Validate donor exists
-    donor = Donor.find_by_id(db, donor_id)
-    if not donor:
-        raise ValueError(f"No donor with id={donor_id}")
-    if campaign_id:
-        camp = Campaign.find_by_id(db, campaign_id)
-        if not camp:
-            raise ValueError(f"No campaign with id={campaign_id}")
+    if title:
+        campaign.title = title
+    if description:
+        campaign.description = description
+
+    db.commit()
+    db.refresh(campaign)
+    return campaign
+
+
+def delete_campaign(campaign_id):
+    db = SessionLocal()
+    campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+    if campaign:
+        db.delete(campaign)
+        db.commit()
+        return True
+    return False
+
+
+# DONATION CRUD
+
+
+def create_donation(amount, donor_id, campaign_id):
+    db = SessionLocal()
     donation = Donation(amount=amount, donor_id=donor_id, campaign_id=campaign_id)
     db.add(donation)
     db.commit()
     db.refresh(donation)
     return donation
 
-def list_donations(db):
-    return db.query(Donation).order_by(Donation.timestamp.desc()).all()
 
-def donations_for_donor(db, donor_id):
-    return db.query(Donation).filter(Donation.donor_id == donor_id).order_by(Donation.timestamp.desc()).all()
+def list_donations():
+    db = SessionLocal()
+    return db.query(Donation).all()
 
-def donations_for_campaign(db, campaign_id):
-    return db.query(Donation).filter(Donation.campaign_id == campaign_id).order_by(Donation.timestamp.desc()).all()
 
-#  Reports 
-def total_donations(db):
-    total = db.query(func.coalesce(func.sum(Donation.amount), 0)).scalar()
-    return float(total) if total is not None else 0.0
+def update_donation(db, donation_id, amount=None, donor_id=None, campaign_id=None):
+    donation = db.query(Donation).filter(Donation.id == donation_id).first()
+    if not donation:
+        return None
 
-def donations_by_donor(db):
-    rows = db.query(Donor.name, func.sum(Donation.amount).label("total")) \
-             .join(Donation, Donation.donor_id == Donor.id) \
-             .group_by(Donor.id).all()
-    return [(name, float(total)) for name, total in rows]
+    if amount:
+        donation.amount = amount
+    if donor_id:
+        donation.donor_id = donor_id
+    if campaign_id:
+        donation.campaign_id = campaign_id
 
-def donations_by_campaign(db):
-    rows = db.query(Campaign.title, func.sum(Donation.amount).label("total")) \
-             .join(Donation, Donation.campaign_id == Campaign.id) \
-             .group_by(Campaign.id).all()
-    return [(title, float(total)) for title, total in rows]
+    db.commit()
+    db.refresh(donation)
+    return donation
+
+
+def delete_donation(donation_id):
+    db = SessionLocal()
+    donation = db.query(Donation).filter(Donation.id == donation_id).first()
+    if donation:
+        db.delete(donation)
+        db.commit()
+        return True
+    return False
