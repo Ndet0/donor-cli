@@ -1,8 +1,10 @@
 from .db import SessionLocal
 from .models import Donor, Campaign, Donation
+from sqlalchemy import or_
 
+# -------------------------
 # DONOR CRUD
-
+# -------------------------
 
 def create_donor(name, email):
     db = SessionLocal()
@@ -43,8 +45,25 @@ def delete_donor(donor_id):
     return False
 
 
-# CAMPAIGN CRUD
+# -------------------------
+# DONOR SEARCH
+# -------------------------
 
+def search_donors(name=None, email=None):
+    db = SessionLocal()
+    query = db.query(Donor)
+
+    if name:
+        query = query.filter(Donor.name.ilike(f"%{name}%"))
+    if email:
+        query = query.filter(Donor.email.ilike(f"%{email}%"))
+
+    return query.all()
+
+
+# -------------------------
+# CAMPAIGN CRUD
+# -------------------------
 
 def create_campaign(title, description=None):
     db = SessionLocal()
@@ -85,8 +104,25 @@ def delete_campaign(campaign_id):
     return False
 
 
-# DONATION CRUD
+# -------------------------
+# CAMPAIGN SEARCH
+# -------------------------
 
+def search_campaigns(title=None, description=None):
+    db = SessionLocal()
+    query = db.query(Campaign)
+
+    if title:
+        query = query.filter(Campaign.title.ilike(f"%{title}%"))
+    if description:
+        query = query.filter(Campaign.description.ilike(f"%{description}%"))
+
+    return query.all()
+
+
+# -------------------------
+# DONATION CRUD
+# -------------------------
 
 def create_donation(amount, donor_id, campaign_id):
     db = SessionLocal()

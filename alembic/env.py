@@ -20,7 +20,7 @@ import sys
 # Add project directory to Python path so Alembic can find src/
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.db import Base
+from donor.db import Base
 
 target_metadata = Base.metadata
 
