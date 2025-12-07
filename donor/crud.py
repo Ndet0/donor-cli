@@ -2,9 +2,9 @@ from .db import SessionLocal
 from .models import Donor, Campaign, Donation
 from sqlalchemy import or_
 
-# -------------------------
+
 # DONOR CRUD
-# -------------------------
+
 
 def create_donor(name, email):
     db = SessionLocal()
@@ -45,9 +45,9 @@ def delete_donor(donor_id):
     return False
 
 
-# -------------------------
+
 # DONOR SEARCH
-# -------------------------
+
 
 def search_donors(name=None, email=None):
     db = SessionLocal()
@@ -61,9 +61,9 @@ def search_donors(name=None, email=None):
     return query.all()
 
 
-# -------------------------
+
 # CAMPAIGN CRUD
-# -------------------------
+
 
 def create_campaign(title, description=None):
     db = SessionLocal()
@@ -104,9 +104,9 @@ def delete_campaign(campaign_id):
     return False
 
 
-# -------------------------
+
 # CAMPAIGN SEARCH
-# -------------------------
+
 
 def search_campaigns(title=None, description=None):
     db = SessionLocal()
@@ -120,9 +120,9 @@ def search_campaigns(title=None, description=None):
     return query.all()
 
 
-# -------------------------
+
 # DONATION CRUD
-# -------------------------
+
 
 def create_donation(amount, donor_id, campaign_id):
     db = SessionLocal()

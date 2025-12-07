@@ -1,9 +1,12 @@
-# src/models.py
+# donor/models.py
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Text
 from sqlalchemy.orm import relationship, validates
 from datetime import datetime
-
 from .db import Base
+from werkzeug.security import generate_password_hash, check_password_hash
+
+
+# Donor Model
 
 class Donor(Base):
     __tablename__ = "donors"
@@ -17,7 +20,6 @@ class Donor(Base):
     def __repr__(self):
         return f"<Donor id={self.id} name='{self.name}'>"
 
-    # validations 
     @validates("name")
     def _validate_name(self, key, value):
         if not value or not value.strip():
@@ -30,31 +32,13 @@ class Donor(Base):
             raise ValueError("Provide a valid email address")
         return value.strip().lower()
 
-    # ORM helpers 
-    @classmethod
-    def create(cls, session, **kwargs):
-        obj = cls(**kwargs)
-        session.add(obj)
-        session.commit()
-        session.refresh(obj)
-        return obj
-
-    @classmethod
-    def get_all(cls, session):
-        return session.query(cls).order_by(cls.name).all()
-
-    @classmethod
-    def find_by_id(cls, session, id_):
-        return session.get(cls, id_)
-
-    @classmethod
-    def find_by_attr(cls, session, **kwargs):
-        return session.query(cls).filter_by(**kwargs).all()
-
     def delete(self, session):
         session.delete(self)
         session.commit()
 
+
+
+# Campaign Model
 
 class Campaign(Base):
     __tablename__ = "campaigns"
@@ -74,30 +58,13 @@ class Campaign(Base):
             raise ValueError("Campaign title must not be empty")
         return value.strip()
 
-    @classmethod
-    def create(cls, session, **kwargs):
-        obj = cls(**kwargs)
-        session.add(obj)
-        session.commit()
-        session.refresh(obj)
-        return obj
-
-    @classmethod
-    def get_all(cls, session):
-        return session.query(cls).order_by(cls.title).all()
-
-    @classmethod
-    def find_by_id(cls, session, id_):
-        return session.get(cls, id_)
-
-    @classmethod
-    def find_by_attr(cls, session, **kwargs):
-        return session.query(cls).filter_by(**kwargs).all()
-
     def delete(self, session):
         session.delete(self)
         session.commit()
 
+
+
+# Donation Model
 
 class Donation(Base):
     __tablename__ = "donations"
@@ -126,3 +93,23 @@ class Donation(Base):
         if val <= 0:
             raise ValueError("Amount must be greater than zero")
         return val
+
+
+
+# User Model (for login)
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True)
+    username = Column(String(50), unique=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    def __repr__(self):
+        return f"<User id={self.id} username='{self.username}'>"

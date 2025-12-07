@@ -1,12 +1,24 @@
-# donor_manager.py
+# donor/donor_manager.py
 from donor.db import SessionLocal
 from donor.models import Donor, Campaign, Donation
 
-# --------------------
-# DONOR FUNCTIONS
-# --------------------
-def add_donor(name, email):
+
+# HELPER FUNCTION
+
+def get_db():
+    """Helper to create a single session context"""
     db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+
+# DONOR FUNCTIONS
+
+def add_donor(name, email):
+    db = next(get_db())
     donor = Donor(name=name, email=email)
     db.add(donor)
     db.commit()
@@ -14,16 +26,16 @@ def add_donor(name, email):
     return {"id": donor.id, "name": donor.name, "email": donor.email}
 
 def list_donors():
-    db = SessionLocal()
+    db = next(get_db())
     return [{"id": d.id, "name": d.name, "email": d.email} for d in db.query(Donor).all()]
 
 def search_donor(name):
-    db = SessionLocal()
+    db = next(get_db())
     results = db.query(Donor).filter(Donor.name.ilike(f"%{name}%")).all()
     return [{"id": d.id, "name": d.name, "email": d.email} for d in results]
 
 def update_donor(donor_id, name=None, email=None):
-    db = SessionLocal()
+    db = next(get_db())
     donor = db.query(Donor).filter(Donor.id == donor_id).first()
     if not donor:
         return None
@@ -36,7 +48,7 @@ def update_donor(donor_id, name=None, email=None):
     return {"id": donor.id, "name": donor.name, "email": donor.email}
 
 def delete_donor(donor_id):
-    db = SessionLocal()
+    db = next(get_db())
     donor = db.query(Donor).filter(Donor.id == donor_id).first()
     if not donor:
         return False
@@ -44,11 +56,12 @@ def delete_donor(donor_id):
     db.commit()
     return True
 
-# --------------------
+
+
 # CAMPAIGN FUNCTIONS
-# --------------------
+
 def add_campaign(title, description=None):
-    db = SessionLocal()
+    db = next(get_db())
     campaign = Campaign(title=title, description=description)
     db.add(campaign)
     db.commit()
@@ -56,11 +69,11 @@ def add_campaign(title, description=None):
     return {"id": campaign.id, "title": campaign.title, "description": campaign.description}
 
 def list_campaigns():
-    db = SessionLocal()
+    db = next(get_db())
     return [{"id": c.id, "title": c.title, "description": c.description} for c in db.query(Campaign).all()]
 
 def update_campaign(campaign_id, title=None, description=None):
-    db = SessionLocal()
+    db = next(get_db())
     campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
     if not campaign:
         return None
@@ -73,7 +86,7 @@ def update_campaign(campaign_id, title=None, description=None):
     return {"id": campaign.id, "title": campaign.title, "description": campaign.description}
 
 def delete_campaign(campaign_id):
-    db = SessionLocal()
+    db = next(get_db())
     campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
     if not campaign:
         return False
@@ -81,11 +94,12 @@ def delete_campaign(campaign_id):
     db.commit()
     return True
 
-# --------------------
+
+
 # DONATION FUNCTIONS
-# --------------------
+
 def add_donation(amount, donor_id, campaign_id=None):
-    db = SessionLocal()
+    db = next(get_db())
     donation = Donation(amount=amount, donor_id=donor_id, campaign_id=campaign_id)
     db.add(donation)
     db.commit()
@@ -93,14 +107,14 @@ def add_donation(amount, donor_id, campaign_id=None):
     return {"id": donation.id, "amount": donation.amount, "donor_id": donor_id, "campaign_id": campaign_id}
 
 def list_donations():
-    db = SessionLocal()
+    db = next(get_db())
     return [
         {"id": d.id, "amount": d.amount, "donor_id": d.donor_id, "campaign_id": d.campaign_id}
         for d in db.query(Donation).all()
     ]
 
 def update_donation(donation_id, amount=None, donor_id=None, campaign_id=None):
-    db = SessionLocal()
+    db = next(get_db())
     donation = db.query(Donation).filter(Donation.id == donation_id).first()
     if not donation:
         return None
@@ -115,7 +129,7 @@ def update_donation(donation_id, amount=None, donor_id=None, campaign_id=None):
     return {"id": donation.id, "amount": donation.amount, "donor_id": donation.donor_id, "campaign_id": donation.campaign_id}
 
 def delete_donation(donation_id):
-    db = SessionLocal()
+    db = next(get_db())
     donation = db.query(Donation).filter(Donation.id == donation_id).first()
     if not donation:
         return False
@@ -123,15 +137,16 @@ def delete_donation(donation_id):
     db.commit()
     return True
 
-# --------------------
+
+
 # REPORTS
-# --------------------
+
 def total_donations():
-    db = SessionLocal()
+    db = next(get_db())
     return sum(d.amount for d in db.query(Donation).all())
 
 def donations_by_donor():
-    db = SessionLocal()
+    db = next(get_db())
     result = {}
     for donor in db.query(Donor).all():
         total = sum(d.amount for d in donor.donations)
@@ -139,7 +154,7 @@ def donations_by_donor():
     return result
 
 def donations_by_campaign():
-    db = SessionLocal()
+    db = next(get_db())
     result = {}
     for campaign in db.query(Campaign).all():
         total = sum(d.amount for d in campaign.donations)
