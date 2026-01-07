@@ -9,6 +9,21 @@ A simple CLI tool to manage donors, donations, campaigns, and reports using:
 - Alembic (migrations, optional)
 - Pipenv (virtual environment + dependency management)
 
+
+A simple CLI tool to manage donors, donations, campaigns, and reports using:
+
+- Python 3.10+
+- SQLAlchemy (ORM)
+- Click (CLI)
+- Alembic (migrations, optional)
+- Pipenv (virtual environment + dependency management)
+
+---
+
+## Quick Start (Local Development)
+
+```bash
+# Clone the repository (if not already done)
 ---
 
 ## Quick Start (Local Development)
